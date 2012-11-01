@@ -1,21 +1,21 @@
 package flv
 
 
-type TagSize uint
+type TagSize byte
 const (
 	HEADER_LENGTH         TagSize =  9
 	PREV_TAG_SIZE_LENGTH  TagSize =  4
 	TAG_HEADER_LENGTH     TagSize =  11
 )
 
-type TagType uint
+type TagType byte
 const (
 	TAG_TYPE_AUDIO TagType       =  8
 	TAG_TYPE_VIDEO TagType       =  9
 	TAG_TYPE_META  TagType       =  18
 )
 
-type VideoFrameType uint
+type VideoFrameType byte
 const (
 	VIDEO_FRAME_TYPE_KEYFRAME         VideoFrameType  = 1
 	VIDEO_FRAME_TYPEINTER_FRAME       VideoFrameType  = 2
@@ -24,7 +24,7 @@ const (
 	VIDEO_FRAME_TYPE_COMMAND          VideoFrameType  = 5
 )
 
-type Flavor uint
+type Flavor byte
 const (
 	METADATA      Flavor = iota
 	FRAME
