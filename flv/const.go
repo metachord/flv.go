@@ -1,5 +1,8 @@
 package flv
 
+const (
+	SIG   = "FLV"
+)
 
 type TagSize byte
 const (

@@ -3,7 +3,12 @@ package flv
 import (
 	"os"
 	"fmt"
+	"bytes"
 )
+
+type Header struct {
+	Version      uint16
+}
 
 type Frame struct {
 	Stream      uint32
@@ -12,6 +17,26 @@ type Frame struct {
 	Flavor      Flavor
 	Position    int64
 	Body        []byte
+}
+
+func ReadHeader(inFile *os.File) (*Header, error) {
+	header := make([]byte, HEADER_LENGTH)
+	_, err := inFile.Read(header)
+	if err != nil {
+		return nil, err
+	}
+
+	sig := header[0:3]
+	if bytes.Compare(sig, []byte(SIG)) != 0 {
+		return nil, fmt.Errorf("bad file format")
+	}
+	version := (uint16(header[3]) << 8) | (uint16(header[4]) << 0)
+	//skip := header[4:5]
+	//offset := header[5:9]
+
+	next_id := make([]byte, 4)
+	_, err = inFile.Read(next_id)
+	return &Header{Version: version}, nil
 }
 
 func ReadTag(inFile *os.File) (fr *Frame, e error) {
