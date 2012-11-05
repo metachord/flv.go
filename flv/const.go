@@ -67,21 +67,21 @@ const (
 )
 
 
-type AudioFormat byte
+type AudioCodec byte
 const (
-	AUDIO_FORMAT_PCM          AudioFormat = 0
-	AUDIO_FORMAT_ADPCM        AudioFormat = 1
-	AUDIO_FORMAT_MP3          AudioFormat = 2
-	AUDIO_FORMAT_PCM_LE       AudioFormat = 3
-	AUDIO_FORMAT_NELLYMOSER8  AudioFormat = 5
-	AUDIO_FORMAT_NELLYMOSER   AudioFormat = 6
-	AUDIO_FORMAT_A_G711       AudioFormat = 7
-	AUDIO_FORMAT_MU_G711      AudioFormat = 8
-	AUDIO_FORMAT_RESERVED     AudioFormat = 9
-	AUDIO_FORMAT_AAC          AudioFormat = 10
-	AUDIO_FORMAT_SPEEX        AudioFormat = 11
-	AUDIO_FORMAT_MP3_8KHZ     AudioFormat = 14
-	AUDIO_FORMAT_DEVICE       AudioFormat = 15
+	AUDIO_CODEC_PCM          AudioCodec = 0
+	AUDIO_CODEC_ADPCM        AudioCodec = 1
+	AUDIO_CODEC_MP3          AudioCodec = 2
+	AUDIO_CODEC_PCM_LE       AudioCodec = 3
+	AUDIO_CODEC_NELLYMOSER8  AudioCodec = 5
+	AUDIO_CODEC_NELLYMOSER   AudioCodec = 6
+	AUDIO_CODEC_A_G711       AudioCodec = 7
+	AUDIO_CODEC_MU_G711      AudioCodec = 8
+	AUDIO_CODEC_RESERVED     AudioCodec = 9
+	AUDIO_CODEC_AAC          AudioCodec = 10
+	AUDIO_CODEC_SPEEX        AudioCodec = 11
+	AUDIO_CODEC_MP3_8KHZ     AudioCodec = 14
+	AUDIO_CODEC_DEVICE       AudioCodec = 15
 )
 
 type AudioAac byte
