@@ -51,7 +51,7 @@ func (f VideoFrame) ToBinary() ([]byte, error) {
 type AudioFrame struct {
 	CFrame
 	CodecId     AudioCodec
-    Rate        AudioRate
+    Rate        uint32
     BitSize     AudioSize
 	Channels    AudioType
 }
@@ -181,7 +181,7 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 	case TAG_TYPE_AUDIO:
 		pFrame.Flavor = FRAME
 		codecId := AudioCodec(uint8(bodyBuf[0]) >> 4)
-		rate := AudioRate((uint8(bodyBuf[0]) >> 2) & 0x03)
+		rate := audioRate(AudioRate((uint8(bodyBuf[0]) >> 2) & 0x03))
 		bitSize := AudioSize((uint8(bodyBuf[0]) >> 1) & 0x01)
 		channels := AudioType(uint8(bodyBuf[0]) & 0x01)
 		resFrame = AudioFrame{CFrame: pFrame, CodecId: codecId, Rate: rate, BitSize: bitSize, Channels: channels}
@@ -189,4 +189,20 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 
 
 	return resFrame, nil
+}
+
+
+func audioRate(ar AudioRate) (uint32) {
+	var ret uint32
+	switch ar {
+	case AUDIO_RATE_5_5:
+		ret = 5500
+	case AUDIO_RATE_11:
+		ret = 11025
+	case AUDIO_RATE_22:
+		ret = 22050
+	case AUDIO_RATE_44:
+		ret = 44056
+	}
+	return ret
 }
