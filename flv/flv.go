@@ -3,8 +3,8 @@ package flv
 import (
 	"os"
 	"fmt"
-	"errors"
 	"bytes"
+	"io"
 )
 
 type Header struct {
@@ -13,7 +13,7 @@ type Header struct {
 }
 
 type Frame interface{
-	ToBinary() ([]byte, error)
+	WriteFrame(io.Writer) error
 }
 
 type CFrame struct {
@@ -26,18 +26,54 @@ type CFrame struct {
 	PrevTagSize uint32
 }
 
-func (f CFrame) ToBinary() ([]byte, error) {
-	d := make([]byte, 0)
-	buf := bytes.NewBuffer(d)
-	buf.WriteByte(byte(f.Type))
+func (f CFrame) WriteFrame(w io.Writer) (error) {
 	bl := uint32(len(f.Body))
-	buf.Write([]byte{byte(bl>>16), byte((bl>>8)&0xFF), byte(bl&0xFF)})
-	buf.Write([]byte{byte((f.Dts>>16) & 0xFF), byte((f.Dts>>8) & 0xFF), byte(f.Dts & 0xFF)})
-	buf.WriteByte(byte((f.Dts >> 24) & 0xFF))
-	buf.Write(f.Body)
-	buf.Write([]byte{byte((f.PrevTagSize>>24) & 0xFF), byte((f.PrevTagSize>>16) & 0xFF), byte((f.PrevTagSize>>8) & 0xFF), byte(f.PrevTagSize & 0xFF)})
-	return buf.Bytes(), nil
+	var err error
+	err = writeType(w, f.Type); if err != nil {return err}
+	err = writeBodyLength(w, bl)
+	err = writeDts(w, f.Dts)
+	err = writeStream(w, f.Stream)
+	err = writeBody(w, f.Body)
+	prevTagSize := bl + uint32(TAG_HEADER_LENGTH)
+	err = writePrevTagSize(w, prevTagSize)
+	return nil
 }
+
+
+func writeType(w io.Writer, t TagType) error {
+	_, err := w.Write([]byte{byte(t)})
+	return err
+}
+
+func writeBodyLength(w io.Writer, bl uint32) error {
+	_, err := w.Write([]byte{byte(bl>>16), byte((bl>>8)&0xFF), byte(bl&0xFF)})
+	return err
+}
+
+func writeDts(w io.Writer, dts uint32) error {
+	_, err := w.Write([]byte{byte((dts>>16) & 0xFF), byte((dts>>8) & 0xFF), byte(dts & 0xFF)})
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte{byte((dts >> 24) & 0xFF)})
+	return err
+}
+
+func writeStream(w io.Writer, stream uint32) error {
+	_, err := w.Write([]byte{byte(stream>>16), byte((stream>>8)&0xFF), byte(stream&0xFF)})
+	return err
+}
+
+func writeBody(w io.Writer, body []byte) error {
+	_, err := w.Write(body)
+	return err
+}
+
+func writePrevTagSize(w io.Writer, prevTagSize uint32) error {
+	_, err := w.Write([]byte{byte((prevTagSize>>24) & 0xFF), byte((prevTagSize>>16) & 0xFF), byte((prevTagSize>>8) & 0xFF), byte(prevTagSize & 0xFF)})
+	return err
+}
+
 
 type VideoFrame struct {
 	CFrame
@@ -46,8 +82,8 @@ type VideoFrame struct {
 	Height      uint16
 }
 
-func (f VideoFrame) ToBinary() ([]byte, error) {
-	return f.ToBinary()
+func (f VideoFrame) WriteFrame(w io.Writer) (error) {
+	return f.CFrame.WriteFrame(w)
 }
 
 type AudioFrame struct {
@@ -58,16 +94,16 @@ type AudioFrame struct {
 	Channels    AudioType
 }
 
-func (f AudioFrame) ToBinary() ([]byte, error) {
-	return f.ToBinary()
+func (f AudioFrame) WriteFrame(w io.Writer) (error) {
+	return f.CFrame.WriteFrame(w)
 }
 
 type MetaFrame struct {
 	CFrame
 }
 
-func (f MetaFrame) ToBinary() ([]byte, error) {
-	return f.ToBinary()
+func (f MetaFrame) WriteFrame(w io.Writer) (error) {
+	return f.CFrame.WriteFrame(w)
 }
 
 type FlvReader struct {
@@ -228,93 +264,6 @@ func audioRate(ar AudioRate) (uint32) {
 	return ret
 }
 
-
-
-
 func (frWriter *FlvWriter) WriteFrame(fr Frame) (e error) {
-
-	var n int
-	var err error
-
-	var tagType TagType
-	var body []byte
-	var dts uint32
-	var stream uint32
-
-	switch fr.(type) {
-	case VideoFrame:
-		tfr := fr.(VideoFrame)
-		tagType = tfr.Type
-		body = tfr.Body
-		dts = tfr.Dts
-		stream = tfr.Stream
-	case AudioFrame:
-		tfr := fr.(AudioFrame)
-		tagType = tfr.Type
-		body = tfr.Body
-		dts = tfr.Dts
-		stream = tfr.Stream
-	case MetaFrame:
-		tfr := fr.(MetaFrame)
-		tagType = tfr.Type
-		body = tfr.Body
-		dts = tfr.Dts
-		stream = tfr.Stream
-	}
-
-
-	tagHeaderB := make([]byte, TAG_HEADER_LENGTH)
-
-	tagHeaderB[0] = byte(tagType)
-	bodyLen := len(body)
-	tagHeaderB[1] = byte((bodyLen >> 16) & 0xFF)
-	tagHeaderB[2] = byte((bodyLen >> 8) & 0xFF)
-	tagHeaderB[3] = byte((bodyLen >> 0) & 0xFF)
-
-	tagHeaderB[4] = byte((dts >> 16) & 0xFF)
-	tagHeaderB[5] = byte((dts >> 8) & 0xFF)
-	tagHeaderB[6] = byte((dts >> 0) & 0xFF)
-
-	tagHeaderB[7] = byte((dts >> 24) & 0xFF)
-
-	tagHeaderB[8] = byte((stream >> 16) & 0xFF)
-	tagHeaderB[9] = byte((stream >> 8) & 0xFF)
-	tagHeaderB[10] = byte((stream >> 0) & 0xFF)
-
-
-
-	n, err = frWriter.outFile.Write(tagHeaderB)
-	if err != nil {
-		return err
-	}
-	if n != len(tagHeaderB) {
-		return errors.New("bad header write")
-	}
-
-	n, err = frWriter.outFile.Write(body)
-	if err != nil {
-		return err
-	}
-	if n != len(body) {
-		return errors.New("bad body write")
-	}
-
-	prevTagSizeB := make([]byte, PREV_TAG_SIZE_LENGTH)
-
-	prevTagSize := uint32(uint32(TAG_HEADER_LENGTH) + uint32(len(body)))
-
-	prevTagSizeB[0] = byte((prevTagSize >> 24) & 0xFF)
-	prevTagSizeB[1] = byte((prevTagSize >> 16) & 0xFF)
-	prevTagSizeB[2] = byte((prevTagSize >> 8) & 0xFF)
-	prevTagSizeB[3] = byte((prevTagSize >> 0) & 0xFF)
-
-
-	n, err = frWriter.outFile.Write(prevTagSizeB)
-	if err != nil {
-		return err
-	}
-	if n != len(prevTagSizeB) {
-		return errors.New("bad prev tag write")
-	}
-	return nil
+	return fr.WriteFrame(frWriter.outFile)
 }
