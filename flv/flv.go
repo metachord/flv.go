@@ -168,8 +168,11 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 
 	tagHeaderB := make([]byte, TAG_HEADER_LENGTH)
 	n, err = frReader.inFile.Read(tagHeaderB)
+	if n == 0 {
+		return nil, nil
+	}
 	if TagSize(n) != TAG_HEADER_LENGTH {
-		return nil, fmt.Errorf("bad record")
+		return nil, fmt.Errorf("bad tag length: %d", n)
 	}
 	if err != nil {
 		return nil, err
