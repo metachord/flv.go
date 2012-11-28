@@ -1,18 +1,18 @@
 package flv
 
 import (
-	"os"
-	"fmt"
 	"bytes"
+	"fmt"
 	"io"
+	"os"
 )
 
 type Header struct {
-	Version      uint16
-	Body         []byte
+	Version uint16
+	Body    []byte
 }
 
-type Frame interface{
+type Frame interface {
 	WriteFrame(io.Writer) error
 }
 
@@ -26,10 +26,13 @@ type CFrame struct {
 	PrevTagSize uint32
 }
 
-func (f CFrame) WriteFrame(w io.Writer) (error) {
+func (f CFrame) WriteFrame(w io.Writer) error {
 	bl := uint32(len(f.Body))
 	var err error
-	err = writeType(w, f.Type); if err != nil {return err}
+	err = writeType(w, f.Type)
+	if err != nil {
+		return err
+	}
 	err = writeBodyLength(w, bl)
 	err = writeDts(w, f.Dts)
 	err = writeStream(w, f.Stream)
@@ -39,19 +42,18 @@ func (f CFrame) WriteFrame(w io.Writer) (error) {
 	return nil
 }
 
-
 func writeType(w io.Writer, t TagType) error {
 	_, err := w.Write([]byte{byte(t)})
 	return err
 }
 
 func writeBodyLength(w io.Writer, bl uint32) error {
-	_, err := w.Write([]byte{byte(bl>>16), byte((bl>>8)&0xFF), byte(bl&0xFF)})
+	_, err := w.Write([]byte{byte(bl >> 16), byte((bl >> 8) & 0xFF), byte(bl & 0xFF)})
 	return err
 }
 
 func writeDts(w io.Writer, dts uint32) error {
-	_, err := w.Write([]byte{byte((dts>>16) & 0xFF), byte((dts>>8) & 0xFF), byte(dts & 0xFF)})
+	_, err := w.Write([]byte{byte((dts >> 16) & 0xFF), byte((dts >> 8) & 0xFF), byte(dts & 0xFF)})
 	if err != nil {
 		return err
 	}
@@ -60,7 +62,7 @@ func writeDts(w io.Writer, dts uint32) error {
 }
 
 func writeStream(w io.Writer, stream uint32) error {
-	_, err := w.Write([]byte{byte(stream>>16), byte((stream>>8)&0xFF), byte(stream&0xFF)})
+	_, err := w.Write([]byte{byte(stream >> 16), byte((stream >> 8) & 0xFF), byte(stream & 0xFF)})
 	return err
 }
 
@@ -70,31 +72,30 @@ func writeBody(w io.Writer, body []byte) error {
 }
 
 func writePrevTagSize(w io.Writer, prevTagSize uint32) error {
-	_, err := w.Write([]byte{byte((prevTagSize>>24) & 0xFF), byte((prevTagSize>>16) & 0xFF), byte((prevTagSize>>8) & 0xFF), byte(prevTagSize & 0xFF)})
+	_, err := w.Write([]byte{byte((prevTagSize >> 24) & 0xFF), byte((prevTagSize >> 16) & 0xFF), byte((prevTagSize >> 8) & 0xFF), byte(prevTagSize & 0xFF)})
 	return err
 }
 
-
 type VideoFrame struct {
 	CFrame
-	CodecId     VideoCodec
-	Width       uint16
-	Height      uint16
+	CodecId VideoCodec
+	Width   uint16
+	Height  uint16
 }
 
-func (f VideoFrame) WriteFrame(w io.Writer) (error) {
+func (f VideoFrame) WriteFrame(w io.Writer) error {
 	return f.CFrame.WriteFrame(w)
 }
 
 type AudioFrame struct {
 	CFrame
-	CodecId     AudioCodec
-    Rate        uint32
-    BitSize     AudioSize
-	Channels    AudioType
+	CodecId  AudioCodec
+	Rate     uint32
+	BitSize  AudioSize
+	Channels AudioType
 }
 
-func (f AudioFrame) WriteFrame(w io.Writer) (error) {
+func (f AudioFrame) WriteFrame(w io.Writer) error {
 	return f.CFrame.WriteFrame(w)
 }
 
@@ -102,29 +103,29 @@ type MetaFrame struct {
 	CFrame
 }
 
-func (f MetaFrame) WriteFrame(w io.Writer) (error) {
+func (f MetaFrame) WriteFrame(w io.Writer) error {
 	return f.CFrame.WriteFrame(w)
 }
 
 type FlvReader struct {
-	InFile     *os.File
-	width      uint16
-	height     uint16
+	InFile *os.File
+	width  uint16
+	height uint16
 }
 
-func NewReader(inFile *os.File) (*FlvReader) {
+func NewReader(inFile *os.File) *FlvReader {
 	return &FlvReader{
 		InFile: inFile,
-		width: 0,
+		width:  0,
 		height: 0,
 	}
 }
 
 type FlvWriter struct {
-	OutFile     *os.File
+	OutFile *os.File
 }
 
-func NewWriter(outFile *os.File) (*FlvWriter) {
+func NewWriter(outFile *os.File) *FlvWriter {
 	return &FlvWriter{
 		OutFile: outFile,
 	}
@@ -149,15 +150,13 @@ func (frReader *FlvReader) ReadHeader() (*Header, error) {
 	return &Header{Version: version, Body: header}, nil
 }
 
-
-func (frWriter *FlvWriter) WriteHeader(header *Header) (error) {
+func (frWriter *FlvWriter) WriteHeader(header *Header) error {
 	_, err := frWriter.OutFile.Write(header.Body)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-
 
 func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 
@@ -184,10 +183,8 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 	tsExt := uint32(tagHeaderB[7])
 	stream := (uint32(tagHeaderB[8]) << 16) | (uint32(tagHeaderB[9]) << 8) | (uint32(tagHeaderB[10]) << 0)
 
-
 	var dts uint32
 	dts = (tsExt << 24) | ts
-
 
 	bodyBuf := make([]byte, bodyLen)
 	n, err = frReader.InFile.Read(bodyBuf)
@@ -202,13 +199,12 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 	}
 	prevTagSize := (uint32(prevTagSizeB[0]) << 24) | (uint32(prevTagSizeB[1]) << 16) | (uint32(prevTagSizeB[2]) << 8) | (uint32(prevTagSizeB[3]) << 0)
 
-
 	pFrame := CFrame{
-		Stream: stream,
-		Dts: dts,
-		Type: tagType,
-		Position: curPos,
-		Body: bodyBuf,
+		Stream:      stream,
+		Dts:         dts,
+		Type:        tagType,
+		Position:    curPos,
+		Body:        bodyBuf,
 		PrevTagSize: prevTagSize,
 	}
 
@@ -247,12 +243,10 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 		resFrame = AudioFrame{CFrame: pFrame, CodecId: codecId, Rate: rate, BitSize: bitSize, Channels: channels}
 	}
 
-
 	return resFrame, nil
 }
 
-
-func audioRate(ar AudioRate) (uint32) {
+func audioRate(ar AudioRate) uint32 {
 	var ret uint32
 	switch ar {
 	case AUDIO_RATE_5_5:
