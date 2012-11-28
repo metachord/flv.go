@@ -107,32 +107,32 @@ func (f MetaFrame) WriteFrame(w io.Writer) (error) {
 }
 
 type FlvReader struct {
-	inFile     *os.File
+	InFile     *os.File
 	width      uint16
 	height     uint16
 }
 
 func NewReader(inFile *os.File) (*FlvReader) {
 	return &FlvReader{
-		inFile: inFile,
+		InFile: inFile,
 		width: 0,
 		height: 0,
 	}
 }
 
 type FlvWriter struct {
-	outFile     *os.File
+	OutFile     *os.File
 }
 
 func NewWriter(outFile *os.File) (*FlvWriter) {
 	return &FlvWriter{
-		outFile: outFile,
+		OutFile: outFile,
 	}
 }
 
 func (frReader *FlvReader) ReadHeader() (*Header, error) {
 	header := make([]byte, HEADER_LENGTH+4)
-	_, err := frReader.inFile.Read(header)
+	_, err := frReader.InFile.Read(header)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (frReader *FlvReader) ReadHeader() (*Header, error) {
 
 
 func (frWriter *FlvWriter) WriteHeader(header *Header) (error) {
-	_, err := frWriter.outFile.Write(header.Body)
+	_, err := frWriter.OutFile.Write(header.Body)
 	if err != nil {
 		return err
 	}
@@ -164,10 +164,10 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 	var n int
 	var err error
 
-	curPos, _ := frReader.inFile.Seek(0, os.SEEK_CUR)
+	curPos, _ := frReader.InFile.Seek(0, os.SEEK_CUR)
 
 	tagHeaderB := make([]byte, TAG_HEADER_LENGTH)
-	n, err = frReader.inFile.Read(tagHeaderB)
+	n, err = frReader.InFile.Read(tagHeaderB)
 	if n == 0 {
 		return nil, nil
 	}
@@ -190,13 +190,13 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 
 
 	bodyBuf := make([]byte, bodyLen)
-	n, err = frReader.inFile.Read(bodyBuf)
+	n, err = frReader.InFile.Read(bodyBuf)
 	if err != nil {
 		return nil, err
 	}
 
 	prevTagSizeB := make([]byte, PREV_TAG_SIZE_LENGTH)
-	n, err = frReader.inFile.Read(prevTagSizeB)
+	n, err = frReader.InFile.Read(prevTagSizeB)
 	if err != nil {
 		return nil, err
 	}
@@ -268,5 +268,5 @@ func audioRate(ar AudioRate) (uint32) {
 }
 
 func (frWriter *FlvWriter) WriteFrame(fr Frame) (e error) {
-	return fr.WriteFrame(frWriter.outFile)
+	return fr.WriteFrame(frWriter.OutFile)
 }
