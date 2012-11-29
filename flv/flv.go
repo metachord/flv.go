@@ -14,6 +14,7 @@ type Header struct {
 
 type Frame interface {
 	WriteFrame(io.Writer) error
+	Stream() uint32
 }
 
 type CFrame struct {
@@ -86,6 +87,9 @@ type VideoFrame struct {
 func (f VideoFrame) WriteFrame(w io.Writer) error {
 	return f.CFrame.WriteFrame(w)
 }
+func (f VideoFrame) Stream() uint32 {
+	return f.CFrame.Stream
+}
 
 type AudioFrame struct {
 	CFrame
@@ -98,6 +102,9 @@ type AudioFrame struct {
 func (f AudioFrame) WriteFrame(w io.Writer) error {
 	return f.CFrame.WriteFrame(w)
 }
+func (f AudioFrame) Stream() uint32 {
+	return f.CFrame.Stream
+}
 
 type MetaFrame struct {
 	CFrame
@@ -105,6 +112,9 @@ type MetaFrame struct {
 
 func (f MetaFrame) WriteFrame(w io.Writer) error {
 	return f.CFrame.WriteFrame(w)
+}
+func (f MetaFrame) Stream() uint32 {
+	return f.CFrame.Stream
 }
 
 type FlvReader struct {
