@@ -262,11 +262,11 @@ func audioRate(ar AudioRate) uint32 {
 	case AUDIO_RATE_5_5:
 		ret = 5500
 	case AUDIO_RATE_11:
-		ret = 11025
+		ret = 11000
 	case AUDIO_RATE_22:
-		ret = 22050
+		ret = 22000
 	case AUDIO_RATE_44:
-		ret = 44056
+		ret = 44000
 	}
 	return ret
 }
