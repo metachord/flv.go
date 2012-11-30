@@ -274,3 +274,12 @@ func audioRate(ar AudioRate) uint32 {
 func (frWriter *FlvWriter) WriteFrame(fr Frame) (e error) {
 	return fr.WriteFrame(frWriter.OutFile)
 }
+
+func (tt TagType) String() (s string) {
+	switch tt {
+	case TAG_TYPE_AUDIO: return "audio"
+	case TAG_TYPE_VIDEO: return "video"
+	case TAG_TYPE_META: return "meta"
+	}
+	return "UNKNOWN"
+}
