@@ -105,3 +105,90 @@ const (
 	FRAME
 	KEYFRAME
 )
+
+var (
+	vcToStr = map[VideoCodec]string{
+		VIDEO_CODEC_JPEG:         "jpeg",
+		VIDEO_CODEC_SORENSON:     "sorenson",
+		VIDEO_CODEC_SCREENVIDEO:  "screen",
+		VIDEO_CODEC_ON2VP6:       "vp6",
+		VIDEO_CODEC_ON2VP6_ALPHA: "vp6a",
+		VIDEO_CODEC_SCREENVIDEO2: "screen2",
+		VIDEO_CODEC_AVC:          "avc",
+	}
+
+	ttToStr = map[TagType]string{
+		TAG_TYPE_AUDIO: "audio",
+		TAG_TYPE_VIDEO: "video",
+		TAG_TYPE_META:  "meta",
+	}
+
+	vftToStr = map[VideoFrameType]string{
+		VIDEO_FRAME_TYPE_KEYFRAME:        "keyframe",
+		VIDEO_FRAME_TYPEINTER_FRAME:      "frame",
+		VIDEO_FRAME_TYPEDISP_INTER_FRAME: "iframe",
+		VIDEO_FRAME_TYPE_GENERATED:       "generated",
+		VIDEO_FRAME_TYPE_COMMAND:         "command",
+	}
+
+	atToStr = map[AudioType]string{
+		AUDIO_TYPE_MONO:   "mono",
+		AUDIO_TYPE_STEREO: "stereo",
+	}
+
+	asToStr = map[AudioSize]string{
+		AUDIO_SIZE_8BIT:  "8bit",
+		AUDIO_SIZE_16BIT: "16bit",
+	}
+
+	arToStr = map[AudioRate]string{
+		AUDIO_RATE_5_5: "5.5",
+		AUDIO_RATE_11:  "11",
+		AUDIO_RATE_22:  "22",
+		AUDIO_RATE_44:  "44",
+	}
+
+	acToStr = map[AudioCodec]string{
+		AUDIO_CODEC_PCM:         "pcm",
+		AUDIO_CODEC_ADPCM:       "adpcm",
+		AUDIO_CODEC_MP3:         "mp3",
+		AUDIO_CODEC_PCM_LE:      "pcmle",
+		AUDIO_CODEC_NELLYMOSER8: "nellymoser8",
+		AUDIO_CODEC_NELLYMOSER:  "nellymoser",
+		AUDIO_CODEC_A_G711:      "g711a",
+		AUDIO_CODEC_MU_G711:     "g711u",
+		AUDIO_CODEC_RESERVED:    "RESERVED",
+		AUDIO_CODEC_AAC:         "aac",
+		AUDIO_CODEC_SPEEX:       "speex",
+		AUDIO_CODEC_MP3_8KHZ:    "mp3_8khz",
+		AUDIO_CODEC_DEVICE:      "device",
+	}
+)
+
+func (vc VideoCodec) String() (s string) {
+	return vcToStr[vc]
+}
+
+func (tt TagType) String() (s string) {
+	return ttToStr[tt]
+}
+
+func (vft VideoFrameType) String() (s string) {
+	return vftToStr[vft]
+}
+
+func (at AudioType) String() (s string) {
+	return atToStr[at]
+}
+
+func (as AudioSize) String() (s string) {
+	return asToStr[as]
+}
+
+func (ar AudioRate) String() (s string) {
+	return arToStr[ar]
+}
+
+func (ac AudioCodec) String() (s string) {
+	return acToStr[ac]
+}

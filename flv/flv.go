@@ -1,9 +1,9 @@
 package flv
 
 import (
-	"github.com/metachord/amf.go/amf0"
 	"bytes"
 	"fmt"
+	"github.com/metachord/amf.go/amf0"
 	"io"
 	"os"
 )
@@ -30,6 +30,25 @@ type CFrame struct {
 	PrevTagSize uint32
 }
 
+type VideoFrame struct {
+	CFrame
+	CodecId VideoCodec
+	Width   uint16
+	Height  uint16
+}
+
+type AudioFrame struct {
+	CFrame
+	CodecId  AudioCodec
+	Rate     uint32
+	BitSize  AudioSize
+	Channels AudioType
+}
+
+type MetaFrame struct {
+	CFrame
+}
+
 func (f CFrame) WriteFrame(w io.Writer) error {
 	bl := uint32(len(f.Body))
 	var err error
@@ -44,6 +63,13 @@ func (f CFrame) WriteFrame(w io.Writer) error {
 	prevTagSize := bl + uint32(TAG_HEADER_LENGTH)
 	err = writePrevTagSize(w, prevTagSize)
 	return nil
+}
+
+func (f CFrame) GetStream() uint32 {
+	return f.Stream
+}
+func (f CFrame) GetDts() uint32 {
+	return f.Dts
 }
 
 func writeType(w io.Writer, t TagType) error {
@@ -80,60 +106,14 @@ func writePrevTagSize(w io.Writer, prevTagSize uint32) error {
 	return err
 }
 
-type VideoFrame struct {
-	CFrame
-	CodecId VideoCodec
-	Width   uint16
-	Height  uint16
-}
-
-func (f VideoFrame) WriteFrame(w io.Writer) error {
-	return f.CFrame.WriteFrame(w)
-}
-func (f VideoFrame) GetStream() uint32 {
-	return f.CFrame.Stream
-}
-func (f VideoFrame) GetDts() uint32 {
-	return f.CFrame.Dts
-}
 func (f VideoFrame) String() string {
 	return fmt.Sprintf("%d\t%d\t%s\t%s\t%d bytes\t%dx%d", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Type, f.CodecId, len(f.CFrame.Body), f.Width, f.Height)
 }
 
-type AudioFrame struct {
-	CFrame
-	CodecId  AudioCodec
-	Rate     uint32
-	BitSize  AudioSize
-	Channels AudioType
-}
-
-func (f AudioFrame) WriteFrame(w io.Writer) error {
-	return f.CFrame.WriteFrame(w)
-}
-func (f AudioFrame) GetStream() uint32 {
-	return f.CFrame.Stream
-}
-func (f AudioFrame) GetDts() uint32 {
-	return f.CFrame.Dts
-}
 func (f AudioFrame) String() string {
 	return fmt.Sprintf("%d\t%d\t%s\t%s\t{%d,%s,%s}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Type, f.CodecId, f.Rate, f.BitSize, f.Channels)
 }
 
-type MetaFrame struct {
-	CFrame
-}
-
-func (f MetaFrame) WriteFrame(w io.Writer) error {
-	return f.CFrame.WriteFrame(w)
-}
-func (f MetaFrame) GetStream() uint32 {
-	return f.CFrame.Stream
-}
-func (f MetaFrame) GetDts() uint32 {
-	return f.CFrame.Dts
-}
 func (f MetaFrame) String() string {
 	buf := bytes.NewReader(f.CFrame.Body)
 	dec := amf0.NewDecoder(buf)
@@ -318,89 +298,4 @@ func audioRate(ar AudioRate) uint32 {
 
 func (frWriter *FlvWriter) WriteFrame(fr Frame) (e error) {
 	return fr.WriteFrame(frWriter.OutFile)
-}
-
-func (tt TagType) String() (s string) {
-	s = ""
-	switch tt {
-	case TAG_TYPE_AUDIO: s = "audio"
-	case TAG_TYPE_VIDEO: s = "video"
-	case TAG_TYPE_META: s = "meta"
-	}
-	return
-}
-
-func (vft VideoFrameType) String() (s string) {
-	s = ""
-	switch vft {
-	case VIDEO_FRAME_TYPE_KEYFRAME: s = "keyframe"
-	case VIDEO_FRAME_TYPEINTER_FRAME: s = "frame"
-	case VIDEO_FRAME_TYPEDISP_INTER_FRAME: s = "iframe"
-	case VIDEO_FRAME_TYPE_GENERATED: s = "generated"
-	case VIDEO_FRAME_TYPE_COMMAND: s = "command"
-	}
-	return
-}
-
-func (vc VideoCodec) String() (s string) {
-	s = ""
-	switch vc {
-	case VIDEO_CODEC_JPEG         : s = "jpeg"
-	case VIDEO_CODEC_SORENSON     : s = "sorenson"
-	case VIDEO_CODEC_SCREENVIDEO  : s = "screen"
-	case VIDEO_CODEC_ON2VP6       : s = "vp6"
-	case VIDEO_CODEC_ON2VP6_ALPHA : s = "vp6a"
-	case VIDEO_CODEC_SCREENVIDEO2 : s = "screen2"
-	case VIDEO_CODEC_AVC          : s = "avc"
-	}
-	return
-}
-
-func (at AudioType) String() (s string) {
-	s = ""
-	switch at {
-	case AUDIO_TYPE_MONO: s = "mono"
-	case AUDIO_TYPE_STEREO: s = "stereo"
-	}
-	return
-}
-
-func (as AudioSize) String() (s string) {
-	s = ""
-	switch as {
-	case AUDIO_SIZE_8BIT: s = "8bit"
-	case AUDIO_SIZE_16BIT: s = "16bit"
-	}
-	return
-}
-
-func (ar AudioRate) String() (s string) {
-	s = ""
-	switch ar {
-	case AUDIO_RATE_5_5: s = "5.5"
-	case AUDIO_RATE_11: s = "11"
-	case AUDIO_RATE_22: s = "22"
-	case AUDIO_RATE_44: s = "44"
-	}
-	return
-}
-
-func (ac AudioCodec) String() (s string) {
-	s = ""
-	switch ac {
-	case AUDIO_CODEC_PCM         : s = "pcm"
-	case AUDIO_CODEC_ADPCM       : s = "adpcm"
-	case AUDIO_CODEC_MP3         : s = "mp3"
-	case AUDIO_CODEC_PCM_LE      : s = "pcmle"
-	case AUDIO_CODEC_NELLYMOSER8 : s = "nellymoser8"
-	case AUDIO_CODEC_NELLYMOSER  : s = "nellymoser"
-	case AUDIO_CODEC_A_G711      : s = "g711a"
-	case AUDIO_CODEC_MU_G711     : s = "g711u"
-	case AUDIO_CODEC_RESERVED    : s = "RESERVED"
-	case AUDIO_CODEC_AAC         : s = "aac"
-	case AUDIO_CODEC_SPEEX       : s = "speex"
-	case AUDIO_CODEC_MP3_8KHZ    : s = "mp3_8khz"
-	case AUDIO_CODEC_DEVICE      : s = "device"
-	}
-	return
 }
