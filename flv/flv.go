@@ -107,11 +107,11 @@ func writePrevTagSize(w io.Writer, prevTagSize uint32) error {
 }
 
 func (f VideoFrame) String() string {
-	return fmt.Sprintf("%d\t%d\t%s\t%s\t{%dx%d,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Type, f.CodecId, f.Width, f.Height, len(f.CFrame.Body))
+	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%dx%d,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Width, f.Height, len(f.CFrame.Body))
 }
 
 func (f AudioFrame) String() string {
-	return fmt.Sprintf("%d\t%d\t%s\t%s\t{%d,%s,%s}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Type, f.CodecId, f.Rate, f.BitSize, f.Channels)
+	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%d,%s,%s}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Rate, f.BitSize, f.Channels)
 }
 
 func (f MetaFrame) String() string {
@@ -139,7 +139,7 @@ func (f MetaFrame) String() string {
 		}
 	}
 
-	return fmt.Sprintf("%d\t%d\t%s\t%s", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Type, mds)
+	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, mds)
 }
 
 type FlvReader struct {
