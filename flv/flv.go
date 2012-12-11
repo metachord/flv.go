@@ -255,34 +255,42 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 	switch tagType {
 	case TAG_TYPE_META:
 		pFrame.Flavor = METADATA
-		resFrame = MetaFrame{pFrame}
+		resFrame = MetaFrame{CFrame: pFrame}
 	case TAG_TYPE_VIDEO:
-		vft := VideoFrameType(uint8(bodyBuf[0]) >> 4)
-		codecId := VideoCodec(uint8(bodyBuf[0]) & 0x0F)
-		switch vft {
-		case VIDEO_FRAME_TYPE_KEYFRAME:
-			pFrame.Flavor = KEYFRAME
-			switch codecId {
-			case VIDEO_CODEC_ON2VP6:
-				hHelper := (uint16(bodyBuf[1]) >> 4) & 0x0F
-				wHelper := uint16(bodyBuf[1]) & 0x0F
-				w := uint16(bodyBuf[5])
-				h := uint16(bodyBuf[6])
+		if len(bodyBuf) > 0 {
+			vft := VideoFrameType(uint8(bodyBuf[0]) >> 4)
+			codecId := VideoCodec(uint8(bodyBuf[0]) & 0x0F)
+			switch vft {
+			case VIDEO_FRAME_TYPE_KEYFRAME:
+				pFrame.Flavor = KEYFRAME
+				switch codecId {
+				case VIDEO_CODEC_ON2VP6:
+					hHelper := (uint16(bodyBuf[1]) >> 4) & 0x0F
+					wHelper := uint16(bodyBuf[1]) & 0x0F
+					w := uint16(bodyBuf[5])
+					h := uint16(bodyBuf[6])
 
-				frReader.width = w*16 - wHelper
-				frReader.height = h*16 - hHelper
+					frReader.width = w*16 - wHelper
+					frReader.height = h*16 - hHelper
+				}
+			default:
+				pFrame.Flavor = FRAME
 			}
-		default:
-			pFrame.Flavor = FRAME
+			resFrame = VideoFrame{CFrame: pFrame, CodecId: codecId, Width: frReader.width, Height: frReader.height}
+		} else {
+			resFrame = VideoFrame{CFrame: pFrame, CodecId: VIDEO_CODEC_UNDEFINED, Width: frReader.width, Height: frReader.height}
 		}
-		resFrame = VideoFrame{CFrame: pFrame, CodecId: codecId, Width: frReader.width, Height: frReader.height}
 	case TAG_TYPE_AUDIO:
 		pFrame.Flavor = FRAME
-		codecId := AudioCodec(uint8(bodyBuf[0]) >> 4)
-		rate := audioRate(AudioRate((uint8(bodyBuf[0]) >> 2) & 0x03))
-		bitSize := AudioSize((uint8(bodyBuf[0]) >> 1) & 0x01)
-		channels := AudioType(uint8(bodyBuf[0]) & 0x01)
-		resFrame = AudioFrame{CFrame: pFrame, CodecId: codecId, Rate: rate, BitSize: bitSize, Channels: channels}
+		if len(bodyBuf) > 0 {
+			codecId := AudioCodec(uint8(bodyBuf[0]) >> 4)
+			rate := audioRate(AudioRate((uint8(bodyBuf[0]) >> 2) & 0x03))
+			bitSize := AudioSize((uint8(bodyBuf[0]) >> 1) & 0x01)
+			channels := AudioType(uint8(bodyBuf[0]) & 0x01)
+			resFrame = AudioFrame{CFrame: pFrame, CodecId: codecId, Rate: rate, BitSize: bitSize, Channels: channels}
+		} else {
+			resFrame = AudioFrame{CFrame: pFrame, CodecId: AUDIO_CODEC_UNDEFINED, Rate: audioRate(AUDIO_RATE_UNDEFINED), BitSize: AUDIO_SIZE_UNDEFINED, Channels: AUDIO_TYPE_UNDEFINED}
+		}
 	}
 
 	return resFrame, nil
