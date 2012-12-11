@@ -23,11 +23,12 @@ const (
 type VideoFrameType byte
 
 const (
-	VIDEO_FRAME_TYPE_KEYFRAME        VideoFrameType = 1
-	VIDEO_FRAME_TYPEINTER_FRAME      VideoFrameType = 2
-	VIDEO_FRAME_TYPEDISP_INTER_FRAME VideoFrameType = 3
-	VIDEO_FRAME_TYPE_GENERATED       VideoFrameType = 4
-	VIDEO_FRAME_TYPE_COMMAND         VideoFrameType = 5
+	VIDEO_FRAME_TYPE_KEYFRAME         VideoFrameType = 1
+	VIDEO_FRAME_TYPE_INTER_FRAME      VideoFrameType = 2
+	VIDEO_FRAME_TYPE_DISP_INTER_FRAME VideoFrameType = 3
+	VIDEO_FRAME_TYPE_GENERATED        VideoFrameType = 4
+	VIDEO_FRAME_TYPE_COMMAND          VideoFrameType = 5
+	VIDEO_FRAME_TYPE_UNDEFINED        VideoFrameType = 255
 )
 
 type VideoCodec byte
@@ -40,6 +41,7 @@ const (
 	VIDEO_CODEC_ON2VP6_ALPHA VideoCodec = 5
 	VIDEO_CODEC_SCREENVIDEO2 VideoCodec = 6
 	VIDEO_CODEC_AVC          VideoCodec = 7
+	VIDEO_CODEC_UNDEFINED    VideoCodec = 255
 )
 
 type VideoAvc byte
@@ -53,24 +55,27 @@ const (
 type AudioType byte
 
 const (
-	AUDIO_TYPE_MONO   AudioType = 0
-	AUDIO_TYPE_STEREO AudioType = 1
+	AUDIO_TYPE_MONO      AudioType = 0
+	AUDIO_TYPE_STEREO    AudioType = 1
+	AUDIO_TYPE_UNDEFINED AudioType = 255
 )
 
 type AudioSize byte
 
 const (
-	AUDIO_SIZE_8BIT  AudioSize = 0
-	AUDIO_SIZE_16BIT AudioSize = 1
+	AUDIO_SIZE_8BIT      AudioSize = 0
+	AUDIO_SIZE_16BIT     AudioSize = 1
+	AUDIO_SIZE_UNDEFINED AudioSize = 255
 )
 
 type AudioRate byte
 
 const (
-	AUDIO_RATE_5_5 AudioRate = 0
-	AUDIO_RATE_11  AudioRate = 1
-	AUDIO_RATE_22  AudioRate = 2
-	AUDIO_RATE_44  AudioRate = 3
+	AUDIO_RATE_5_5       AudioRate = 0
+	AUDIO_RATE_11        AudioRate = 1
+	AUDIO_RATE_22        AudioRate = 2
+	AUDIO_RATE_44        AudioRate = 3
+	AUDIO_RATE_UNDEFINED AudioRate = 255
 )
 
 type AudioCodec byte
@@ -89,6 +94,7 @@ const (
 	AUDIO_CODEC_SPEEX       AudioCodec = 11
 	AUDIO_CODEC_MP3_8KHZ    AudioCodec = 14
 	AUDIO_CODEC_DEVICE      AudioCodec = 15
+	AUDIO_CODEC_UNDEFINED   AudioCodec = 255
 )
 
 type AudioAac byte
@@ -124,11 +130,11 @@ var (
 	}
 
 	vftToStr = map[VideoFrameType]string{
-		VIDEO_FRAME_TYPE_KEYFRAME:        "keyframe",
-		VIDEO_FRAME_TYPEINTER_FRAME:      "frame",
-		VIDEO_FRAME_TYPEDISP_INTER_FRAME: "iframe",
-		VIDEO_FRAME_TYPE_GENERATED:       "generated",
-		VIDEO_FRAME_TYPE_COMMAND:         "command",
+		VIDEO_FRAME_TYPE_KEYFRAME:         "keyframe",
+		VIDEO_FRAME_TYPE_INTER_FRAME:      "frame",
+		VIDEO_FRAME_TYPE_DISP_INTER_FRAME: "iframe",
+		VIDEO_FRAME_TYPE_GENERATED:        "generated",
+		VIDEO_FRAME_TYPE_COMMAND:          "command",
 	}
 
 	atToStr = map[AudioType]string{
