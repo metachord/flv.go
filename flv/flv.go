@@ -107,7 +107,14 @@ func writePrevTagSize(w io.Writer, prevTagSize uint32) error {
 }
 
 func (f VideoFrame) String() string {
-	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%dx%d,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Width, f.Height, len(f.CFrame.Body))
+	s := ""
+	switch f.Flavor {
+	case KEYFRAME:
+		s = fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%dx%d,%d bytes} keyframe", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Width, f.Height, len(f.CFrame.Body))
+	default:
+		s = fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%dx%d,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Width, f.Height, len(f.CFrame.Body))
+	}
+	return s
 }
 
 func (f AudioFrame) String() string {
