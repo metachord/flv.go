@@ -307,6 +307,8 @@ func audioRate(ar AudioRate) uint32 {
 		ret = 22000
 	case AUDIO_RATE_44:
 		ret = 44000
+	default:
+		ret = 0
 	}
 	return ret
 }
