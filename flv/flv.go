@@ -250,15 +250,13 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 		PrevTagSize: prevTagSize,
 	}
 
+	var resFrame Frame
+
 	switch tagType {
 	case TAG_TYPE_META:
 		pFrame.Flavor = METADATA
-		return MetaFrame{CFrame: pFrame}, nil
+		resFrame = MetaFrame{pFrame}
 	case TAG_TYPE_VIDEO:
-		resFrame := VideoFrame{CFrame: pFrame}
-		if len(bodyBuf) == 0 {
-			return resFrame, nil
-		}
 		vft := VideoFrameType(uint8(bodyBuf[0]) >> 4)
 		codecId := VideoCodec(uint8(bodyBuf[0]) & 0x0F)
 		switch vft {
@@ -277,23 +275,17 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 		default:
 			pFrame.Flavor = FRAME
 		}
-		resFrame.CodecId = codecId
-		resFrame.Width = frReader.width
-		resFrame.Height = frReader.height
-		return resFrame, nil
+		resFrame = VideoFrame{CFrame: pFrame, CodecId: codecId, Width: frReader.width, Height: frReader.height}
 	case TAG_TYPE_AUDIO:
 		pFrame.Flavor = FRAME
-		resFrame := AudioFrame{CFrame: pFrame}
-		if len(bodyBuf) == 0 {
-			return resFrame, nil
-		}
-		resFrame.CodecId = AudioCodec(uint8(bodyBuf[0]) >> 4)
-		resFrame.Rate = audioRate(AudioRate((uint8(bodyBuf[0]) >> 2) & 0x03))
-		resFrame.BitSize = AudioSize((uint8(bodyBuf[0]) >> 1) & 0x01)
-		resFrame.Channels = AudioType(uint8(bodyBuf[0]) & 0x01)
-		return resFrame, nil
+		codecId := AudioCodec(uint8(bodyBuf[0]) >> 4)
+		rate := audioRate(AudioRate((uint8(bodyBuf[0]) >> 2) & 0x03))
+		bitSize := AudioSize((uint8(bodyBuf[0]) >> 1) & 0x01)
+		channels := AudioType(uint8(bodyBuf[0]) & 0x01)
+		resFrame = AudioFrame{CFrame: pFrame, CodecId: codecId, Rate: rate, BitSize: bitSize, Channels: channels}
 	}
-	return nil, nil
+
+	return resFrame, nil
 }
 
 func audioRate(ar AudioRate) uint32 {
