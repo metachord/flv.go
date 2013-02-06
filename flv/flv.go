@@ -15,8 +15,12 @@ type Header struct {
 
 type Frame interface {
 	WriteFrame(io.Writer) error
+	GetBody() *[]byte
 	GetStream() uint32
 	GetDts() uint32
+	SetDts(dts uint32)
+	GetType() TagType
+	GetPrevTagSize() uint32
 	String() string
 }
 
@@ -65,11 +69,23 @@ func (f CFrame) WriteFrame(w io.Writer) error {
 	return nil
 }
 
+func (f CFrame) GetBody() *[]byte {
+	return &f.Body
+}
 func (f CFrame) GetStream() uint32 {
 	return f.Stream
 }
 func (f CFrame) GetDts() uint32 {
 	return f.Dts
+}
+func (f CFrame) SetDts(dts uint32) {
+	f.Dts = dts
+}
+func (f CFrame) GetType() TagType {
+	return f.Type
+}
+func (f CFrame) GetPrevTagSize() uint32 {
+	return f.PrevTagSize
 }
 
 func writeType(w io.Writer, t TagType) error {
