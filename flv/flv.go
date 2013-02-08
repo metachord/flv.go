@@ -35,14 +35,14 @@ type CFrame struct {
 }
 
 type VideoFrame struct {
-	CFrame
+	*CFrame
 	CodecId VideoCodec
 	Width   uint16
 	Height  uint16
 }
 
 type AudioFrame struct {
-	CFrame
+	*CFrame
 	CodecId  AudioCodec
 	Rate     uint32
 	BitSize  AudioSize
@@ -50,10 +50,10 @@ type AudioFrame struct {
 }
 
 type MetaFrame struct {
-	CFrame
+	*CFrame
 }
 
-func (f CFrame) WriteFrame(w io.Writer) error {
+func (f *CFrame) WriteFrame(w io.Writer) error {
 	bl := uint32(len(f.Body))
 	var err error
 	err = writeType(w, f.Type)
@@ -69,22 +69,22 @@ func (f CFrame) WriteFrame(w io.Writer) error {
 	return nil
 }
 
-func (f CFrame) GetBody() *[]byte {
+func (f *CFrame) GetBody() *[]byte {
 	return &f.Body
 }
-func (f CFrame) GetStream() uint32 {
+func (f *CFrame) GetStream() uint32 {
 	return f.Stream
 }
-func (f CFrame) GetDts() uint32 {
+func (f *CFrame) GetDts() uint32 {
 	return f.Dts
 }
-func (f CFrame) SetDts(dts uint32) {
+func (f *CFrame) SetDts(dts uint32) {
 	f.Dts = dts
 }
-func (f CFrame) GetType() TagType {
+func (f *CFrame) GetType() TagType {
 	return f.Type
 }
-func (f CFrame) GetPrevTagSize() uint32 {
+func (f *CFrame) GetPrevTagSize() uint32 {
 	return f.PrevTagSize
 }
 
@@ -257,7 +257,7 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 	}
 	prevTagSize := (uint32(prevTagSizeB[0]) << 24) | (uint32(prevTagSizeB[1]) << 16) | (uint32(prevTagSizeB[2]) << 8) | (uint32(prevTagSizeB[3]) << 0)
 
-	pFrame := CFrame{
+	pFrame := &CFrame{
 		Stream:      stream,
 		Dts:         dts,
 		Type:        tagType,
