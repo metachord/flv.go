@@ -169,13 +169,16 @@ type FlvReader struct {
 	InFile *os.File
 	width  uint16
 	height uint16
+	size   int64
 }
 
 func NewReader(inFile *os.File) *FlvReader {
+	fi, _ := inFile.Stat()
 	return &FlvReader{
 		InFile: inFile,
 		width:  0,
 		height: 0,
+		size:   fi.Size(),
 	}
 }
 
@@ -216,12 +219,34 @@ func (frWriter *FlvWriter) WriteHeader(header *Header) error {
 	return nil
 }
 
-func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
+func (frReader *FlvReader) ReadFrameRecover() (fr Frame, err error, skipBytes int) {
+	curPos, err := frReader.InFile.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		return nil, err, 0
+	}
+	for {
+		fr, err = frReader.ReadFrame()
+		if fr != nil {
+			return
+		} else {
+			curPos, err = frReader.InFile.Seek(curPos+1, os.SEEK_SET)
+			if err != nil || curPos > frReader.size {
+				return
+			}
+			skipBytes++
+		}
+	}
+	return
+}
+
+func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
 
 	var n int
-	var err error
 
-	curPos, _ := frReader.InFile.Seek(0, os.SEEK_CUR)
+	curPos, err := frReader.InFile.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		return nil, err
+	}
 
 	tagHeaderB := make([]byte, TAG_HEADER_LENGTH)
 	n, err = frReader.InFile.Read(tagHeaderB)
@@ -266,8 +291,6 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 		PrevTagSize: prevTagSize,
 	}
 
-	var resFrame Frame
-
 	switch tagType {
 	case TAG_TYPE_META:
 		pFrame.Flavor = METADATA
@@ -307,6 +330,8 @@ func (frReader *FlvReader) ReadFrame() (fr Frame, e error) {
 		} else {
 			resFrame = AudioFrame{CFrame: pFrame, CodecId: AUDIO_CODEC_UNDEFINED, Rate: audioRate(AUDIO_RATE_UNDEFINED), BitSize: AUDIO_SIZE_UNDEFINED, Channels: AUDIO_TYPE_UNDEFINED}
 		}
+	default:
+		return nil, fmt.Errorf("bad tag type: %d", tagType)
 	}
 
 	return resFrame, nil
