@@ -219,21 +219,21 @@ func (frWriter *FlvWriter) WriteHeader(header *Header) error {
 	return nil
 }
 
-func (frReader *FlvReader) ReadFrameRecover() (fr Frame, err error, skipBytes int) {
+func (frReader *FlvReader) ReadFrameRecover(maxFrameSize int) (fr Frame, err error, skipBytes int) {
 	curPos, err := frReader.InFile.Seek(0, os.SEEK_CUR)
 	if err != nil {
 		return nil, err, 0
 	}
 	for {
 		fr, err = frReader.ReadFrame()
-		if fr != nil {
-			return
-		} else {
+		if fr == nil || fr.GetBody() == nil || (maxFrameSize > 0 && (len(*fr.GetBody()) > maxFrameSize)) {
 			curPos, err = frReader.InFile.Seek(curPos+1, os.SEEK_SET)
 			if err != nil || curPos > frReader.size {
 				return
 			}
 			skipBytes++
+		} else {
+			return
 		}
 	}
 	return
