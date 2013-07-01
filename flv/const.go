@@ -44,12 +44,12 @@ const (
 	VIDEO_CODEC_UNDEFINED    VideoCodec = 255
 )
 
-type VideoAvc byte
+type AvcPacketType byte
 
 const (
-	VIDEO_AVC_SEQUENCE_HEADER VideoAvc = 0
-	VIDEO_AVC_NALU            VideoAvc = 1
-	VIDEO_AVC_SEQUENCE_END    VideoAvc = 2
+	VIDEO_AVC_SEQUENCE_HEADER AvcPacketType = 0
+	VIDEO_AVC_NALU            AvcPacketType = 1
+	VIDEO_AVC_SEQUENCE_END    AvcPacketType = 2
 )
 
 type AudioType byte
@@ -169,6 +169,12 @@ var (
 		AUDIO_CODEC_MP3_8KHZ:    "mp3_8khz",
 		AUDIO_CODEC_DEVICE:      "device",
 	}
+
+	avcptToStr = map[AvcPacketType]string{
+		VIDEO_AVC_SEQUENCE_HEADER:	"sequence header",
+		VIDEO_AVC_NALU:				"NALU",
+		VIDEO_AVC_SEQUENCE_END:		"sequence end",
+	}
 )
 
 func (vc VideoCodec) String() (s string) {
@@ -181,6 +187,10 @@ func (tt TagType) String() (s string) {
 
 func (vft VideoFrameType) String() (s string) {
 	return vftToStr[vft]
+}
+
+func (apt AvcPacketType) String() (s string) {
+	return avcptToStr[apt]
 }
 
 func (at AudioType) String() (s string) {
