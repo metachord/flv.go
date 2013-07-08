@@ -41,6 +41,11 @@ type VideoFrame struct {
 	Height  uint16
 }
 
+type AVCVideoFrame struct {
+	*VideoFrame
+	PacketType AvcPacketType
+}
+
 type AudioFrame struct {
 	*CFrame
 	CodecId  AudioCodec
@@ -129,6 +134,15 @@ func (f VideoFrame) String() string {
 		s = fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%dx%d,%d bytes} keyframe", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Width, f.Height, len(f.CFrame.Body))
 	default:
 		s = fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%dx%d,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Width, f.Height, len(f.CFrame.Body))
+	}
+	return s
+}
+
+func (f AVCVideoFrame) String() string {
+	s := ""
+	s = fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%s,%dx%d,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.PacketType, f.Width, f.Height, len(f.CFrame.Body))
+	if f.Flavor == KEYFRAME {
+		s += " seekable"
 	}
 	return s
 }
@@ -302,20 +316,43 @@ func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
 			switch vft {
 			case VIDEO_FRAME_TYPE_KEYFRAME:
 				pFrame.Flavor = KEYFRAME
-				switch codecId {
-				case VIDEO_CODEC_ON2VP6:
-					hHelper := (uint16(bodyBuf[1]) >> 4) & 0x0F
-					wHelper := uint16(bodyBuf[1]) & 0x0F
-					w := uint16(bodyBuf[5])
-					h := uint16(bodyBuf[6])
-
-					frReader.width = w*16 - wHelper
-					frReader.height = h*16 - hHelper
-				}
 			default:
 				pFrame.Flavor = FRAME
 			}
-			resFrame = VideoFrame{CFrame: pFrame, CodecId: codecId, Width: frReader.width, Height: frReader.height}
+
+			switch {
+			case codecId == VIDEO_CODEC_ON2VP6 && vft == VIDEO_FRAME_TYPE_KEYFRAME:
+				hHelper := (uint16(bodyBuf[1]) >> 4) & 0x0F
+				wHelper := uint16(bodyBuf[1]) & 0x0F
+				w := uint16(bodyBuf[5])
+				h := uint16(bodyBuf[6])
+
+				frReader.width = w*16 - wHelper
+				frReader.height = h*16 - hHelper
+			case codecId == VIDEO_CODEC_AVC && AvcPacketType(bodyBuf[1]) == VIDEO_AVC_SEQUENCE_HEADER:
+				confRecord, err := ParseAVCConfRecord(bodyBuf[5:])
+				if err == nil {
+					// fmt.Printf("\nparsed %s\n", confRecord)
+					sps, err := ParseSPS(confRecord.RawSPSData[0])
+					if err == nil {
+						// fmt.Printf("parsed %s\n\n", sps)
+						frReader.width = uint16(sps.Width())
+						frReader.height = uint16(sps.Height())
+					} else {
+						fmt.Printf("\nparse error %s\n\n", err)
+					}
+				} else {
+					fmt.Printf("\nparse error %s\n\n", err)
+				}
+			}
+
+			vFrame := VideoFrame{CFrame: pFrame, CodecId: codecId, Width: frReader.width, Height: frReader.height}
+			switch codecId {
+			case VIDEO_CODEC_AVC:
+				resFrame = AVCVideoFrame{VideoFrame: &vFrame, PacketType: AvcPacketType(bodyBuf[1])}
+			default:
+				resFrame = vFrame
+			}
 		} else {
 			resFrame = VideoFrame{CFrame: pFrame, CodecId: VIDEO_CODEC_UNDEFINED, Width: frReader.width, Height: frReader.height}
 		}
