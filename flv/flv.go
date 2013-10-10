@@ -148,7 +148,7 @@ func (f AVCVideoFrame) String() string {
 }
 
 func (f AudioFrame) String() string {
-	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%d,%s,%s}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Rate, f.BitSize, f.Channels)
+	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%d,%s,%s,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Rate, f.BitSize, f.Channels, len(f.CFrame.Body))
 }
 
 func (f MetaFrame) String() string {
@@ -233,33 +233,68 @@ func (frWriter *FlvWriter) WriteHeader(header *Header) error {
 	return nil
 }
 
-func (frReader *FlvReader) ReadFrameRecover(maxFrameSize int) (fr Frame, err error, skipBytes int) {
-	curPos, err := frReader.InFile.Seek(0, os.SEEK_CUR)
-	if err != nil {
-		return nil, err, 0
+func (fr *FlvReader) Recover(e Error, scanLength int) (broken Frame, err error, seekLength int) {
+	re, ok := e.(*ReadError);
+	if !ok {
+		return nil, fmt.Errorf("unrecoverable read error"), 0
 	}
+	// fmt.Printf("\n%v %d\n", re, scanLength)
+
+	scanStart := re.position
+	readStart := re.position
+	scanBuf := []byte{}
+
+	if re.incomplete != nil {
+		scanBuf = re.incomplete.Body
+		readStart += int64(len(scanBuf))
+		scanLength += len(scanBuf)
+	}
+
+	fr.InFile.Seek(readStart, os.SEEK_SET)
+	b := make([]byte, scanLength)
+	_, err = fr.InFile.Read(b)
+
+	if err != nil {
+		return nil, Unrecoverable(err.Error(), readStart), 0
+	}
+
+	scanBuf = append(scanBuf, b...)
+	// fmt.Printf("%v\n", scanBuf)
+	validTagStart := []byte{8, 9, 18}
+	seekLength = 0
 	for {
-		fr, err = frReader.ReadFrame()
-		if fr == nil || fr.GetBody() == nil || (maxFrameSize > 0 && (len(*fr.GetBody()) > maxFrameSize)) {
-			curPos, err = frReader.InFile.Seek(curPos+1, os.SEEK_SET)
-			if err != nil || curPos > frReader.size {
-				return
-			}
-			skipBytes++
-		} else {
-			return
+		for ;(seekLength<scanLength) && (bytes.IndexByte(validTagStart, scanBuf[seekLength]) == -1);seekLength++ {
+		}
+		if seekLength == scanLength {
+			return nil, fmt.Errorf("no valid frames @[%d-%d]", scanStart, int(scanStart)+seekLength), seekLength
+		}
+		fr.InFile.Seek(scanStart+int64(seekLength), os.SEEK_SET)
+		_, err := fr.readFrame()
+		if err == nil {
+			break
+		}
+		seekLength += 1
+		if seekLength == scanLength {
+			return nil, fmt.Errorf("no valid frames @[%d-%d]", scanStart, int(scanStart)+seekLength), seekLength
 		}
 	}
+	fr.InFile.Seek(scanStart+int64(seekLength), os.SEEK_SET)
+
+	if re.incomplete != nil {
+		f := re.incomplete
+		f.Body = f.Body[:seekLength]
+		broken = fr.parseFrame(f)
+	}
+
 	return
 }
 
-func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
-
+func (frReader *FlvReader) readFrame() (*CFrame, Error) {
 	var n int
 
 	curPos, err := frReader.InFile.Seek(0, os.SEEK_CUR)
 	if err != nil {
-		return nil, err
+		return nil, Unrecoverable(err.Error(), curPos)
 	}
 
 	tagHeaderB := make([]byte, TAG_HEADER_LENGTH)
@@ -268,13 +303,18 @@ func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
 		return nil, nil
 	}
 	if TagSize(n) != TAG_HEADER_LENGTH {
-		return nil, fmt.Errorf("bad tag length: %d", n)
+		return nil, Unrecoverable( fmt.Sprintf("bad tag length=%d", n), curPos)
 	}
 	if err != nil {
-		return nil, err
+		return nil, Unrecoverable(err.Error(), curPos)
 	}
 
+	validTagStart := []byte{8, 9, 18}
+	if bytes.IndexByte(validTagStart, tagHeaderB[0]) == -1 {
+		return nil, InvalidTagStart(curPos)
+	}
 	tagType := TagType(tagHeaderB[0])
+
 	bodyLen := (uint32(tagHeaderB[1]) << 16) | (uint32(tagHeaderB[2]) << 8) | (uint32(tagHeaderB[3]) << 0)
 	ts := (uint32(tagHeaderB[4]) << 16) | (uint32(tagHeaderB[5]) << 8) | (uint32(tagHeaderB[6]) << 0)
 	tsExt := uint32(tagHeaderB[7])
@@ -286,13 +326,13 @@ func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
 	bodyBuf := make([]byte, bodyLen)
 	n, err = frReader.InFile.Read(bodyBuf)
 	if err != nil {
-		return nil, err
+		return nil, Unrecoverable(err.Error(), curPos)
 	}
 
 	prevTagSizeB := make([]byte, PREV_TAG_SIZE_LENGTH)
 	n, err = frReader.InFile.Read(prevTagSizeB)
 	if err != nil {
-		return nil, err
+		return nil, Unrecoverable(err.Error(), curPos)
 	}
 	prevTagSize := (uint32(prevTagSizeB[0]) << 24) | (uint32(prevTagSizeB[1]) << 16) | (uint32(prevTagSizeB[2]) << 8) | (uint32(prevTagSizeB[3]) << 0)
 
@@ -304,6 +344,16 @@ func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
 		Body:        bodyBuf,
 		PrevTagSize: prevTagSize,
 	}
+	if prevTagSize != bodyLen + uint32(TAG_HEADER_LENGTH) {
+		return nil, IncompleteFrameError(pFrame)
+	}
+	return pFrame, nil
+}
+
+
+func (frReader *FlvReader) parseFrame(pFrame *CFrame) (resFrame Frame) {
+	bodyBuf := pFrame.Body
+	tagType := pFrame.Type
 
 	switch tagType {
 	case TAG_TYPE_META:
@@ -339,10 +389,10 @@ func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
 						frReader.width = uint16(sps.Width())
 						frReader.height = uint16(sps.Height())
 					} else {
-						fmt.Printf("\nparse error %s\n\n", err)
+						// fmt.Printf("\nparse error %s\n\n", err)
 					}
 				} else {
-					fmt.Printf("\nparse error %s\n\n", err)
+					// fmt.Printf("\nparse error %s\n\n", err)
 				}
 			}
 
@@ -367,11 +417,20 @@ func (frReader *FlvReader) ReadFrame() (resFrame Frame, err error) {
 		} else {
 			resFrame = AudioFrame{CFrame: pFrame, CodecId: AUDIO_CODEC_UNDEFINED, Rate: audioRate(AUDIO_RATE_UNDEFINED), BitSize: AUDIO_SIZE_UNDEFINED, Channels: AUDIO_TYPE_UNDEFINED}
 		}
-	default:
-		return nil, fmt.Errorf("bad tag type: %d", tagType)
 	}
 
-	return resFrame, nil
+	return resFrame
+}
+
+func (frReader *FlvReader) ReadFrame() (resFrame Frame, err Error) {
+	pFrame, err := frReader.readFrame()
+	if err != nil {
+		return
+	}
+	if pFrame != nil {
+		resFrame = frReader.parseFrame(pFrame)
+	}
+	return
 }
 
 func audioRate(ar AudioRate) uint32 {
