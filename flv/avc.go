@@ -65,14 +65,18 @@ func ParseAVCConfRecord(data []byte) (rec *AVCConfRecord, err error) {
     profile_compatibility := r.U8()
     AVCLevelIndication := r.U8()
 
+    r.U(6)
+    /* nobody follows standard in reserved
     if r.U(6) != 077 {
         panic("wrong reserved 1")
-    }
+    } */
 
     r.U(2) /* lengthSizeMinusOne */
+    r.U(3)
+    /* same here
     if r.U(3) != 07 {
         panic("wrong reserved 2")
-    }
+    } */
 
     numOfSPS := r.U(5)
     spss := make([][]byte, numOfSPS)
